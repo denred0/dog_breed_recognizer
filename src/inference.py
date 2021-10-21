@@ -51,13 +51,13 @@ all = 0
 
 input_dir = "data/inference/input"
 for root, dirs, files in os.walk(input_dir):
-    for folder in dirs:
+    for folder in tqdm(dirs):
 
         p = os.path.join(input_dir, folder) + os.path.sep
 
         _, _, images_list = next(walk(p))
 
-        for img_name in tqdm(images_list):
+        for img_name in images_list:
 
             img = cv2.imread(os.path.join(p, img_name), cv2.IMREAD_COLOR)
             img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
@@ -73,10 +73,14 @@ for root, dirs, files in os.walk(input_dir):
 
             d = class_names[np.argmax(score)]
 
+            folder_name = ""
             if d == folder:
                 correct += 1
+                folder_name = folder
+            else:
+                folder_name = folder + "  -->  " + d
 
-            folder_name = folder + "____" + d
+            # folder_name = folder + "____" + d
             folder_result = Path(output_dir).joinpath(folder_name)
             if not folder_result.exists():
                 Path(folder_result).mkdir(parents=True, exist_ok=True)
