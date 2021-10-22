@@ -68,6 +68,7 @@ def evaluate_model(val_dataset, model, loss_fn):
 
 def get_last_exp_number(model_name):
     folders = [x[0] for x in os.walk(os.path.join("logs", model_name))][1:]
+    folders = [x.split("/")[-1] for x in folders]
 
     if not folders:
         return 0
@@ -103,11 +104,11 @@ def main():
 
     model.compile(optimizer=optimizer, loss=loss_fn, metrics=['accuracy'])
 
-    exp_number = get_last_exp_number(config.MODEL)
-
     log_folder = Path(os.path.join("logs", config.MODEL))
     if not log_folder.exists():
         Path(log_folder).mkdir(parents=True, exist_ok=True)
+
+    exp_number = get_last_exp_number(config.MODEL)
 
     Path.joinpath(log_folder, "exp_" + str(exp_number)).mkdir(parents=True, exist_ok=True)
 
@@ -148,8 +149,8 @@ def main():
 
         # Display metrics at the end of each epoch.
         train_acc = train_acc_metric.result()
-        print("Training acc over epoch: %.4f" % (float(train_acc),))
-        print("Training loss: %.4f" % (np.round(np.mean(train_losses), 4),))
+        # print("Training acc over epoch: %.4f" % (float(train_acc),))
+        # print("Training loss: %.4f" % (np.round(np.mean(train_losses), 4),))
 
         # Reset training metrics at the end of each epoch
         train_acc_metric.reset_states()
@@ -183,8 +184,8 @@ def main():
 
         val_acc = val_acc_metric.result()
         val_acc_metric.reset_states()
-        print("Validation acc: %.4f" % (float(val_acc),))
-        print("Validation loss: %.4f" % (np.round(np.mean(val_losses), 4),))
+        # print("Validation acc: %.4f" % (float(val_acc),))
+        # print("Validation loss: %.4f" % (np.round(np.mean(val_losses), 4),))
 
         if val_acc > val_acc_max:
             model.save(os.path.join("model", config.MODEL))
