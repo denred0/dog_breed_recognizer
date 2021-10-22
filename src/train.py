@@ -66,6 +66,15 @@ def evaluate_model(val_dataset, model, loss_fn):
     print(f"Loss over validation set is {loss}")
 
 
+def get_last_exp_number(model_name):
+    folders = [x[0] for x in os.walk(os.path.join("logs", model_name))][1:]
+
+    if not folders:
+        return 0
+    else:
+        return max([int(x.split("_")[1]) for x in folders]) + 1
+
+
 def main():
     # train_loader, val_loader = get_loaders(config.DATA_DIR + "train", config.DATA_DIR + "val", config.BATCH_SIZE, config.IMG_SIZE)
     train_loader, val_loader, _, _, _ = get_loaders(config.DATA_DIR, config.IMG_SIZE, config.BATCH_SIZE, config.MEAN,
@@ -78,7 +87,7 @@ def main():
         print("Building model")
         model = get_model(config.URL, config.IMG_SIZE, config.NUM_CLASSES)
 
-    learning_rate_fn = keras.optimizers.schedules.ExponentialDecay(initial_learning_rate=1e-3, decay_steps=1000,
+    learning_rate_fn = keras.optimizers.schedules.ExponentialDecay(initial_learning_rate=1e-3, decay_steps=2000,
                                                                    decay_rate=0.95,
                                                                    staircase=True
                                                                    )
@@ -94,10 +103,13 @@ def main():
 
     model.compile(optimizer=optimizer, loss=loss_fn, metrics=['accuracy'])
 
+    exp_number = get_last_exp_number(config.MODEL)
+
     log_folder = Path(os.path.join("logs", config.MODEL))
-    if log_folder.exists() and log_folder.is_dir():
-        shutil.rmtree(log_folder)
-    Path(log_folder).mkdir(parents=True, exist_ok=True)
+    if not log_folder.exists():
+        Path(log_folder).mkdir(parents=True, exist_ok=True)
+
+    Path.joinpath(log_folder, "exp_" + str(exp_number)).mkdir(parents=True, exist_ok=True)
 
     val_acc_max = 0
 
@@ -178,7 +190,7 @@ def main():
             model.save(os.path.join("model", config.MODEL))
             val_acc_max = val_acc
 
-            with open(os.path.join("logs", config.MODEL,
+            with open(os.path.join("logs", config.MODEL, "exp_" + str(exp_number),
                                    f"e{str(epoch)}_val_loss_{str(np.round(np.mean(val_losses), 4))}_val_acc_{str(np.round(float(val_acc), 4))}.txt"),
                       "w") as file:
                 file.write("")
