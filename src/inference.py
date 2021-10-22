@@ -39,7 +39,7 @@ with open("classes.txt") as file:
     lines = file.readlines()
     class_names = [line.rstrip() for line in lines]
 
-model = keras.models.load_model(config.MODEL_PATH)
+model = keras.models.load_model(os.path.join("model", config.MODEL))
 
 output_dir = Path('data/inference/output')
 if output_dir.exists() and output_dir.is_dir():

@@ -3,11 +3,13 @@ import os
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 import tensorflow as tf
+import shutil
 from tensorflow import keras
 from tensorflow.keras import layers
 import tensorflow_hub as hub
 from dataset_v2 import get_loaders
 from tqdm import tqdm
+from pathlib import Path
 
 import config
 
@@ -76,7 +78,12 @@ def main():
         print("Building model")
         model = get_model(config.URL, config.IMG_SIZE, config.NUM_CLASSES)
 
-    optimizer = keras.optimizers.Adam(learning_rate=1e-4)
+    learning_rate_fn = keras.optimizers.schedules.ExponentialDecay(initial_learning_rate=1e-3, decay_steps=1000,
+                                                                   decay_rate=0.95,
+                                                                   staircase=True
+                                                                   )
+
+    optimizer = keras.optimizers.Adam(learning_rate=learning_rate_fn)
     loss_fn = keras.losses.SparseCategoricalCrossentropy(from_logits=False)
     train_acc_metric = keras.metrics.SparseCategoricalAccuracy()
     val_acc_metric = keras.metrics.SparseCategoricalAccuracy()
@@ -86,6 +93,13 @@ def main():
     # callbacks = [rlronp, estop]
 
     model.compile(optimizer=optimizer, loss=loss_fn, metrics=['accuracy'])
+
+    log_folder = Path(os.path.join("logs", config.MODEL))
+    if log_folder.exists() and log_folder.is_dir():
+        shutil.rmtree(log_folder)
+    Path(log_folder).mkdir(parents=True, exist_ok=True)
+
+    val_acc_max = 0
 
     for epoch in range(config.NUM_EPOCHS):
         print("\nStart of epoch %d" % (epoch,))
@@ -118,14 +132,7 @@ def main():
             # Update training metric.
             train_acc_metric.update_state(y_batch_train, logits)
 
-            bar.set_postfix(Epoch=epoch, Train_Loss=epoch_loss)
-
-            # Log every 200 batches.
-            # if step % 500 == 0 and step != 0:
-            #     print(
-            #         "Training loss (for one batch) at step %d: %.4f"
-            #         % (step, float(loss_value))
-            #     )
+            bar.set_postfix(Epoch=epoch, Train_Loss=epoch_loss, LR=optimizer._decayed_lr('float32').numpy())
 
         # Display metrics at the end of each epoch.
         train_acc = train_acc_metric.result()
@@ -167,7 +174,14 @@ def main():
         print("Validation acc: %.4f" % (float(val_acc),))
         print("Validation loss: %.4f" % (np.round(np.mean(val_losses), 4),))
 
-        model.save(config.MODEL_PATH)
+        if val_acc > val_acc_max:
+            model.save(os.path.join("model", config.MODEL))
+            val_acc_max = val_acc
+
+            with open(os.path.join("logs", config.MODEL,
+                                   f"e{str(epoch)}_val_loss_{str(np.round(np.mean(val_losses), 4))}_val_acc_{str(np.round(float(val_acc), 4))}.txt"),
+                      "w") as file:
+                file.write("")
 
 
 if __name__ == "__main__":

@@ -11,7 +11,7 @@ BATCH_SIZE = 8
 NUM_CLASSES = 120
 NUM_EPOCHS = 10
 DATA_DIR = "data/dogs_dataset_prepared"
-MODEL_PATH = "model/mobilenet_v3_small_100_224"
+MODEL = "mobilenet_v3_small_100_224"
 LOAD_MODEL = False
 
 MEAN = [0.485, 0.456, 0.406]
