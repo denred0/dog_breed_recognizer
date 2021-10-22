@@ -92,10 +92,16 @@ def main():
 
         # Iterate over the batches of the dataset.
         train_losses = []
-        for step, (x_batch_train, y_batch_train) in enumerate(tqdm(train_loader)):
+        dataset_size = 0
+        running_loss = 0.0
+
+        bar = tqdm(enumerate(train_loader), total=len(train_loader))
+        for step, (x_batch_train, y_batch_train) in bar:
             x_batch_train = x_batch_train.permute(0, 2, 3, 1)
             x_batch_train = tf.convert_to_tensor(np.array(x_batch_train))
             y_batch_train = tf.convert_to_tensor(np.array(y_batch_train))
+
+            batch_size = x_batch_train.shape[0]
 
             with tf.GradientTape() as tape:
                 logits = model(x_batch_train, training=True)
@@ -104,15 +110,22 @@ def main():
             grads = tape.gradient(loss_value, model.trainable_weights)
             optimizer.apply_gradients(zip(grads, model.trainable_weights))
 
+            running_loss += (float(loss_value) * batch_size)
+            dataset_size += batch_size
+
+            epoch_loss = running_loss / dataset_size
+
             # Update training metric.
             train_acc_metric.update_state(y_batch_train, logits)
 
+            bar.set_postfix(Epoch=epoch, Train_Loss=epoch_loss)
+
             # Log every 200 batches.
-            if step % 500 == 0 and step != 0:
-                print(
-                    "Training loss (for one batch) at step %d: %.4f"
-                    % (step, float(loss_value))
-                )
+            # if step % 500 == 0 and step != 0:
+            #     print(
+            #         "Training loss (for one batch) at step %d: %.4f"
+            #         % (step, float(loss_value))
+            #     )
 
         # Display metrics at the end of each epoch.
         train_acc = train_acc_metric.result()
@@ -124,10 +137,16 @@ def main():
 
         # Run a validation loop at the end of each epoch.
         val_losses = []
-        for x_batch_val, y_batch_val in val_loader:
+        dataset_size_val = 0
+        running_loss_val = 0.0
+
+        bar_val = tqdm(enumerate(val_loader), total=len(val_loader))
+        for step, (x_batch_val, y_batch_val) in bar_val:
             x_batch_val = x_batch_val.permute(0, 2, 3, 1)
             x_batch_val = tf.convert_to_tensor(np.array(x_batch_val))
             y_batch_val = tf.convert_to_tensor(np.array(y_batch_val))
+
+            batch_size = x_batch_val.shape[0]
 
             val_logits = model(x_batch_val, training=False)
             val_loss_value = loss_fn(y_batch_val, val_logits)
@@ -135,6 +154,13 @@ def main():
 
             # Update val metrics
             val_acc_metric.update_state(y_batch_val, val_logits)
+
+            running_loss_val += (float(val_loss_value) * batch_size)
+            dataset_size_val += batch_size
+
+            epoch_loss_val = running_loss_val / dataset_size_val
+
+            bar_val.set_postfix(Epoch=epoch, Valid_Loss=epoch_loss_val)
 
         val_acc = val_acc_metric.result()
         val_acc_metric.reset_states()
